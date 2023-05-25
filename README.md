@@ -1,6 +1,6 @@
 # Auto-update pull requests
 
-[![Basic validation](https://github.com/castastrophe/actions-pr-auto-update/actions/workflows/basic-validation.yml/badge.svg?branch=main)](https://github.com/castastrophe/actions-pr-auto-update/actions/workflows/basic-validation.yml)
+[![Basic validation](https://github.com/castastrophe/actions-pr-auto-update/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/castastrophe/actions-pr-auto-update/actions/workflows/build.yml)
 
 The goal of this action is to automatically update pull requests when their target branch is updated. This is useful when you have a long-running pull request that is not yet ready to be merged, but you want to keep it up to date with the target branch. Several customizations are available to control which pull requests are updated. Bot pull requests such as dependabot and closed pull requests are always ignored.
 
