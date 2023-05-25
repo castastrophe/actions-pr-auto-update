@@ -75,6 +75,8 @@ level of the token owner.
 ## Future work
 
 - [ ] Add support for rebasing pull requests instead of merging
+- [ ] Include a SHA check to ensure the pull request is not already up-to-date (or query for a needs-update flag?)
+- [ ] Explore a chron-job approach to avoid rate limiting issues and keep logs clean (e.g. run once a day)
 
 ## Contributions
 
