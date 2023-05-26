@@ -96,12 +96,12 @@ export default async function run(core: typeof Core, github: typeof GitHub): Pro
         }
 
         if (typeof allowLabels !== 'undefined' && allowLabels.length !== 0) {
-          allow = pr.labels.some((label) => allowLabels.includes(label.name));
+          allow = allow && pr.labels.some((label) => allowLabels.includes(label.name));
           if (!allow) core.info(`${print} as none of the required labels (${allowLabels.join(', ')}) were present.`);
         }
 
         if (typeof denyLabels !== 'undefined' && denyLabels.length !== 0) {
-          allow = pr.labels.every((label) => !denyLabels.includes(label.name));
+          allow = allow && pr.labels.every((label) => !denyLabels.includes(label.name));
           if (!allow) core.info(`${print} because one of the blocking labels (${denyLabels.join(', ')}) was present.`);
         }
 
@@ -166,7 +166,7 @@ export default async function run(core: typeof Core, github: typeof GitHub): Pro
 
     /* Find out which pull requests exist to meet these requirements */
     const prs: ReturnPullData = [];
-    if (typeof limit !== 'undefined') {
+    if (typeof limit !== 'undefined' && limit > 100) {
       let pages = Math.ceil(limit / 100); // limit = 10, pages = 1; limit = 101, pages = 2
       do {
         if (prs.length >= limit) break;
