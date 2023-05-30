@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { RestEndpointMethods } from '@actions/github/node_modules/@octokit/plugin-rest-endpoint-methods/dist-types/generated/method-types';
 import type * as GitHub from '@actions/github';
 import type * as Core from '@actions/core';
+
+import 'colors';
 
 type PRListPromise = ReturnType<RestEndpointMethods['pulls']['list']>;
 type ReturnPullData = Awaited<PRListPromise>['data'];
@@ -89,7 +92,7 @@ export default async function run(core: typeof Core, github: typeof GitHub): Pro
 
       return prs.filter((pr) => {
         let allow = true;
-        const print = `Excluding #${pr.number} ${pr.title} | ${pr.url}`;
+        const print = `Excluding ${`#${pr.number}`.yellow} ${pr.title} | ${`${pr.url}`.cyan.underline}`;
         if (!includeDrafts && isDraft(pr)) {
           core.info(`${print} due to draft status.`);
           return false;
@@ -117,34 +120,25 @@ export default async function run(core: typeof Core, github: typeof GitHub): Pro
     }
   }
 
-  let token: string;
-  let client: ReturnType<typeof github.getOctokit>;
+  // Attempt to connect to the GitHub REST API
+  const token = core.getInput('token', { required: true }) ?? process.env.GITHUB_TOKEN;
+  if (typeof token === 'undefined') {
+    core.error('No token was provided.');
+    core.setFailed('No token was provided.');
+    return;
+  }
 
+  const client = github.getOctokit(token);
+  if (!client) {
+    core.error('Unable to create an authenticated client.');
+    core.setFailed('Unable to create an authenticated client.');
+    return;
+  }
+
+  /* Check if the token is valid */
   let exit = false;
   try {
-    token = core.getInput('token', { required: true }) ?? process.env.GITHUB_TOKEN;
-    if (typeof token === 'undefined') {
-      core.error('No token was provided.');
-      core.setFailed('No token was provided.');
-      exit = true;
-    } else {
-      client = github.getOctokit(token);
-      if (!client) {
-        core.error('Unable to create an authenticated client.');
-        core.setFailed('Unable to create an authenticated client.');
-        exit = true;
-      } else {
-        /* Check if the token is valid */
-        await client.rest.users.getAuthenticated();
-
-        core.info('Successfully authenticated with the GitHub API.');
-
-        if (github.context.payload.action === 'deleted') {
-          core.info('The ref was deleted, so there is no need to update any pull requests.');
-          return;
-        }
-      }
-    }
+    await client.rest.users.getAuthenticated();
   } catch (error: unknown) {
     if (error instanceof Error) {
       core.error(error);
@@ -157,92 +151,106 @@ export default async function run(core: typeof Core, github: typeof GitHub): Pro
 
   if (exit) return;
 
-  try {
-    const strhold = core.getInput('limit');
-    const limit: number | undefined =
-      typeof strhold !== 'undefined' && strhold.length !== 0
-        ? parseInt(strhold, 10)
-        : undefined;
+  core.info('Successfully authenticated with the GitHub API.');
 
-    /* Find out which pull requests exist to meet these requirements */
-    const prs: ReturnPullData = [];
-    if (typeof limit !== 'undefined' && limit > 100) {
-      let pages = Math.ceil(limit / 100); // limit = 10, pages = 1; limit = 101, pages = 2
-      do {
-        if (prs.length >= limit) break;
+  if (github.context.payload.action === 'deleted') {
+    core.info('The ref was deleted, so there is no need to update any pull requests.');
+    return;
+  }
 
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const nextPage = await fetchPullRequests(client!.rest, pages === 1 ? limit : 100);
-        if (!nextPage || nextPage.status !== 200 || !nextPage.data || nextPage.data.length === 0) break;
+  const strhold = core.getInput('limit');
+  const limit: number | undefined =
+    typeof strhold !== 'undefined' && strhold.length !== 0
+      ? parseInt(strhold, 10)
+      : undefined;
 
-        // if we have a result, filter out the PRs that don't meet the requirements
-        // this must be done here so we know if we need to fetch another page
-        const filtered = filterPullRequests(nextPage.data) ?? [];
-        if (filtered.length > 0) {
-          filtered.forEach((pr) => {
-            // Don't add duplicates
-            if (prs.some((p) => p.number === pr.number)) return;
-            prs.push(pr);
-          });
-        }
-      } while (prs.length < limit && --pages > 0);
-    } else {
+  /* Find out which pull requests exist to meet these requirements */
+  const prs: ReturnPullData = [];
+  if (typeof limit !== 'undefined' && limit > 100) {
+    let pages = Math.ceil(limit / 100); // limit = 10, pages = 1; limit = 101, pages = 2
+    do {
+      if (prs.length >= limit) break;
+
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const page = await fetchPullRequests(client!.rest);
-      if (page && page.status === 200 && page.data && page.data.length > 0) {
-        prs.push(...(filterPullRequests(page.data) ?? []));
+      const nextPage = await fetchPullRequests(client!.rest, pages === 1 ? limit : 100);
+      if (!nextPage || nextPage.status !== 200 || !nextPage.data || nextPage.data.length === 0) break;
+
+      // if we have a result, filter out the PRs that don't meet the requirements
+      // this must be done here so we know if we need to fetch another page
+      const filtered = filterPullRequests(nextPage.data) ?? [];
+      if (filtered.length > 0) {
+        filtered.forEach((pr) => {
+          // Don't add duplicates
+          if (prs.some((p) => p.number === pr.number)) return;
+          prs.push(pr);
+        });
       }
+    } while (prs.length < limit && --pages > 0);
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const page = await fetchPullRequests(client!.rest);
+    if (page && page.status === 200 && page.data && page.data.length > 0) {
+      prs.push(...(filterPullRequests(page.data) ?? []));
     }
+  }
 
-    /* No PRs? No problem! */
-    if (prs.length === 0) {
-      core.info('No pull requests found that meet the requirements.');
-      return core.setOutput('updated', 0);
-    }
+  /* No PRs? No problem! */
+  if (prs.length === 0) {
+    core.info('No pull requests found that meet the requirements.');
+    core.setOutput('updated', 0);
+    core.setOutput('failed', 0);
+    return;
+  }
 
-    if (typeof limit !== 'undefined' && prs.length > limit) {
-      core.info(
-        `Limiting the PRs being updated to the first ${limit} to have been most recently updated, any remaining will be skipped.`,
-      );
-    }
+  if (typeof limit !== 'undefined' && prs.length > limit) {
+    core.info(
+      `Limiting the PRs being updated to the first ${limit} to have been most recently updated, any remaining will be skipped.`,
+    );
+  }
 
-    core.info(`Found ${prs.length} pull requests to update.\n\n`);
-    await Promise.all(
-      prs.map(async (pr) => {
-        core.debug(`Attempting to update #${pr.number} ${pr.title} ${pr.url}`);
-        /* @todo Figure out how to configure rebase updates */
-        const result = await client.rest.pulls.updateBranch({
+  core.info(`Found ${prs.length} pull requests to update.\n\n`);
+  await Promise.all(
+    prs.map(async (pr) => {
+      core.debug(`Attempting to update ${`#${pr.number}`.yellow} ${pr.title} ${`${pr.url}`.underline.cyan}...`);
+
+      let result: PRUpdateRun | undefined;
+      /* @todo Figure out how to configure rebase updates */
+      try {
+        result = await client.rest.pulls.updateBranch({
           ...github.context.repo,
           expected_head_sha: pr.head.sha,
           pull_number: pr.number,
         });
+      } catch (err) {
+        core.info(`Failed to update ${`#${pr.number}`.yellow} ${pr.title} ${`${pr.url}`.underline.cyan}`);
+        const error = err as Error;
+        core.info(error.message);
+      }
 
-        core.debug(`Result: ${result.status} ${result.status !== 200 as 202 ? `${result.data.message}\n${result.url}` : ''}`);
-        return { result, pr };
-      })
-    ).then((results): void => {
-      const passed = results.filter(
-        (r) => r.result.status === (200 as PRUpdateRun['status']),
-      );
-      const failed = results.filter(
-        (r) => r.result.status !== (200 as PRUpdateRun['status']),
-      );
+      if (!result) return;
 
-      results = results.sort((a, b) => a.pr.number - b.pr.number);
+      core.debug(`Result: ${result.status} ${result.status !== 200 as 202 ? `${result.data.message}\n${`${result.url}`.underline.cyan}` : ''}`);
+      return { result, pr };
+    })
+  ).then((results): void => {
+    if (!results) return;
 
-      core.info(
-        `\n\n-------------------------\nAttempted to update ${results.length} pull request${results.length === 1 ? '' : 's'}:\n${results.map(r => `  ${r.result.status !== 200 as 202 ? '❌' : '✅'}  #${r.pr.number} ${r.pr.title} | ${r.pr.url}`).join('\n')}\n-------------------------\n\nSummary\n---\n  ${passed.length} succeeded.\n  ${failed.length} failed.`,
-      );
+    results = results.filter((r) => typeof r !== 'undefined');
 
-      core.setOutput('updated', passed.length);
-      core.setOutput('failed', failed.length);
-    });
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      core.error(error);
-      core.setFailed(error.message);
-    } else {
-      core.error('An unknown error occurred while processing the action.');
-    }
-  }
+    const passed = results.filter(
+      (r) => r!.result.status === (200 as PRUpdateRun['status']),
+    );
+    const failed = results!.filter(
+      (r) => r!.result.status !== (200 as PRUpdateRun['status']),
+    );
+
+    results = results.sort((a, b) => a!.pr.number - b!.pr.number);
+
+    core.info(
+      `\n\n-------------------------\nAttempted to update ${results.length} pull request${results.length === 1 ? '' : 's'}:\n${results.map(r => `  ${r!.result.status !== 200 as 202 ? '❌' : '✅'}  ${`#${r!.pr.number}`.yellow} ${r!.pr.title}\t${`${r!.pr.number}`.underline.cyan}`).join('\n')}\n-------------------------\n\n${'Summary'.underline}\n---\n  ${`${passed.length}`.green} succeeded.\n  ${`${failed.length}`.red} failed.`,
+    );
+
+    core.setOutput('updated', passed.length);
+    core.setOutput('failed', failed.length);
+  });
 }
