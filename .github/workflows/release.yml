@@ -12,17 +12,37 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
       steps:
-        - uses: actions/checkout@v3
+        - name: Check out code
+          uses: actions/checkout@v5
           with:
             persist-credentials: false
-        - uses: actions/setup-node@v3
+
+        - name: Enable Corepack
+          run: corepack enable
+
+        - name: Use Node LTS version
+          uses: actions/setup-node@v6
           with:
-            node-version: 18
             cache: yarn
-            registry-url: https://registry.npmjs.org
-        - run: yarn install --frozen-lockfile
+            node-version: 22
+
+        ## --- YARN CACHE --- ##
+        - name: Check for cached dependencies
+          continue-on-error: true
+          id: cache-dependencies
+          uses: actions/cache@v4
+          with:
+            path: |
+              .cache/yarn
+              node_modules
+            key: ubuntu-latest-node22-stylelint16-${{ hashFiles('yarn.lock') }}
+
+        - name: Install dependencies
+          run: yarn install --immutable
+
         - name: Run build
           run: yarn build
+
         - name: Semantic release
           uses: cycjimmy/semantic-release-action@v3
           env:

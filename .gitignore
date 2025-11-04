@@ -1,9 +1,16 @@
-node_modules
-*.log
-.husky
+/node_modules
+npm-debug.log
 .DS_Store
+coverage/
 .env
-npm-debug.log*
-coverage
+bin/
 
-bin
+# Yarn
+yarn-error.log
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions

@@ -1,0 +1,26 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"baseBranchPatterns": ["main"],
+	"extends": [
+		"config:recommended",
+		":widenPeerDependencies",
+		"group:githubArtifactActions"
+	],
+	"labels": [],
+	"packageRules": [
+		{
+			"matchDatasources": ["npm"],
+			"minimumReleaseAge": "1 month"
+		},
+		{
+			"groupName": "commitlint ecosystem",
+			"matchPackageNames": ["commitlint", "@commitlint/*"]
+		}
+	],
+	"rebaseWhen": "behind-base-branch",
+	"reviewers": ["castastrophe"],
+	"lockFileMaintenance": {
+		"enabled": true,
+		"extends": ["schedule:monthly"]
+	}
+}

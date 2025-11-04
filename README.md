@@ -6,7 +6,7 @@
 uses: castastrophe/actions-pr-auto-update@v1
 ```
 
-The goal of this action is to automatically update pull requests when their target branch is updated. This is useful when you have a long-running pull request that is not yet ready to be merged, but you want to keep it up to date with the target branch. Several customizations are available to control which pull requests are updated. Bot pull requests such as dependabot and closed pull requests are always ignored.
+The goal of this action is to update pull requests when the target branch is updated. This is useful when you have long-running pull requests that are not yet ready to be merged, but you want to keep it up-to-date with the target branch. Several customizations are available to control which pull requests are updated. Bot pull requests such as dependabot and closed pull requests are always ignored.
 
 This project was forked from the cited repo below. This fork focuses on adding additional configurations and modernizing the tools and dependencies. <sup>[1](#citations)</sup>
 
@@ -83,13 +83,20 @@ level of the token owner.
 - [ ] Include a SHA check to ensure the pull request is not already up-to-date (or query for a needs-update flag?)
 - [ ] Explore a chron-job approach to avoid rate limiting issues and keep logs clean (e.g. run once a day)
 
-## Contributions
 
-Contributions are welcome! See the [Contributor's Guide](CONTRIBUTING.md).
+## Contributing
+
+Contributions are welcome! Please open an [issue](https://github.com/castastrophe/postcss-custom-properties-mapping/issues/new) or submit a pull request.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT license](LICENSE).
+
+## Funding ☕️
+
+If you find this plugin useful and would like to buy me a coffee/beer as a small thank you, I would greatly appreciate it! Funding links are available in the GitHub UI for this repo.
+
+<a href="https://www.buymeacoffee.com/castastrophe" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 ## Citations
 
