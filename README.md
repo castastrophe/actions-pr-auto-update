@@ -3,7 +3,7 @@
 [![Basic validation](https://github.com/castastrophe/actions-pr-auto-update/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/castastrophe/actions-pr-auto-update/actions/workflows/build.yml)
 
 ```yml
-uses: castastrophe/actions-pr-auto-update@v1
+uses: castastrophe/actions-pr-auto-update@v2.0.0
 ```
 
 The goal of this action is to update pull requests when the target branch is updated. This is useful when you have long-running pull requests that are not yet ready to be merged, but you want to keep it up-to-date with the target branch. Several customizations are available to control which pull requests are updated. Bot pull requests such as dependabot and closed pull requests are always ignored.
