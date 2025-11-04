@@ -11,18 +11,26 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Use Node LTS version
+        uses: actions/setup-node@v6
         with:
           cache: yarn
-          node-version: 18
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-      - name: Run build
-        run: yarn build
-      - name: Update all PRs
-        uses: ./
+          node-version: 22
+
+      ## --- YARN CACHE --- ##
+      - name: Check for cached dependencies
+        continue-on-error: true
+        id: cache-dependencies
+        uses: actions/cache@v4
         with:
-          token: ${{ secrets.GH_TOKEN }}
-          limit: 10
-          include_drafts: true
+          path: |
+            .cache/yarn
+            node_modules
+          key: ubuntu-latest-node22-stylelint16-${{ hashFiles('yarn.lock') }}
+
